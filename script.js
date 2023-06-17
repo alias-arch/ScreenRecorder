@@ -3,15 +3,16 @@ const startElem = document.getElementById("start");
 const stopElem = document.getElementById("stop");
 const pauseElem = document.getElementById("pause");
 const resumeElem = document.getElementById("resume");
-const options = {mimeType:"video/webm"};
+const options = { mimeType: "video/webm", audioBitsPerSecond: 256000 };
 const recordedChunks = [];
-let mediaRecorder; 
+let mediaRecorder;
+let audioStream;
 
 const displayMediaOptions = {
-  video:{
-    displaySurface:"window"
+  video: {
+    displaySurface: "window"
   },
-  audio: false
+  audio: true
 };
 
 
@@ -28,15 +29,17 @@ pauseElem.addEventListener("click", (evt) => {
 }, false);
 
 resumeElem.addEventListener("click", (evt) => {
-    mediaRecorder.resume();
+  mediaRecorder.resume();
 }, false);
 
 
 async function start_record() {
   try {
-    const stream =   await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
-    videoElem.srcObject = stream;
-    mediaRecorder = new MediaRecorder(stream, options);
+    const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // Get user audio stream
+    const combinedStream = new MediaStream([...stream.getTracks(), ...audioStream.getTracks()]); // Combine video and audio streams
+    videoElem.srcObject = combinedStream;
+    mediaRecorder = new MediaRecorder(combinedStream, options);
     mediaRecorder.ondataavailable = handleDataAvailable;
     mediaRecorder.start();
   } catch (err) {
@@ -51,6 +54,8 @@ function stop_record(evt) {
   tracks.forEach((track) => track.stop());
   videoElem.srcObject = null;
   mediaRecorder.stop();
+  audioStream.getTracks().forEach((track) => track.stop()); // Stop audio stream tracks
+
 }
 
 
